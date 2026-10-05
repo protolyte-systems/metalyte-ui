@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, App, Space, Typography } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
+import { Alert, Anchor, App, Card, Descriptions, Drawer, Empty, Form, Input, Space, Switch, Tag, Typography } from "antd";
+import { AppstoreOutlined, BlockOutlined, ContactsOutlined, DeleteOutlined, DownloadOutlined, PlusOutlined, TagsOutlined, TeamOutlined } from "@ant-design/icons";
 
 import MarqButton from "../components/common/MarqButton";
 import ContactList from "../components/contacts/ContactList";
 import ContactListFilters, { DATE_RANGE_OPTIONS } from "../components/contacts/ContactListFilters";
 import CreateContactModal from "../components/contacts/CreateContactModal";
-import { createContact, listContacts, normalizeContactPage } from "../api/contactApi";
+import { createContact, getContactSegments, getContactTags, listContacts, normalizeContactPage, updateContact } from "../api/contactApi";
 import { parseTimestamp } from "../utils/time";
 import { tokens } from "../theme/tokens";
 
@@ -97,6 +97,23 @@ export default function ContactsPage() {
     const [sort, setSort] = useState(DEFAULT_SORT);
     const [dateRange, setDateRange] = useState("all");
     const [createOpen, setCreateOpen] = useState(false);
+    const [selectedContact, setSelectedContact] = useState(null);
+    const [selectedContactKeys, setSelectedContactKeys] = useState([]);
+    const [profileForm] = Form.useForm();
+    const [profileSaving, setProfileSaving] = useState(false);
+    const [activeSection, setActiveSection] = useState("all");
+    const [sectionData, setSectionData] = useState([]);
+    const dataSections = ["all", "leads", "customers", "blocked"];
+
+    useEffect(() => {
+        if (activeSection !== "tags" && activeSection !== "segments") {
+            setSectionData([]);
+            return;
+        }
+        const request = activeSection === "tags" ? getContactTags() : getContactSegments();
+        request.then((response) => setSectionData(response.data?.data ?? [])).catch(() => setSectionData([]));
+    }, [activeSection]);
+    const contactSections = [{ key: "all", label: "All Contacts", icon: <ContactsOutlined /> }, { key: "leads", label: "Leads", icon: <TeamOutlined /> }, { key: "customers", label: "Customers", icon: <TeamOutlined /> }, { key: "segments", label: "Segments", icon: <AppstoreOutlined /> }, { key: "tags", label: "Tags", icon: <TagsOutlined /> }, { key: "import-export", label: "Import / Export", icon: <DownloadOutlined /> }, { key: "blocked", label: "Blocked Contacts", icon: <BlockOutlined /> }];
 
     const inFlightRef = useRef(false);
     const sentinelRef = useRef(null);
@@ -111,7 +128,7 @@ export default function ContactsPage() {
             setPage(0);
             inFlightRef.current = false;
 
-            listContacts({ page: 0, size: pageSize, sort, ...buildServerQuery({ search, dateRange }) })
+            listContacts({ page: 0, size: pageSize, sort, section: activeSection, ...buildServerQuery({ search, dateRange }) })
                 .then((response) => {
                     if (!active) return;
                     const pageData = normalizeContactPage(response);
@@ -136,7 +153,7 @@ export default function ContactsPage() {
             active = false;
             window.clearTimeout(timer);
         };
-    }, [search, dateRange, sort, pageSize]);
+    }, [search, dateRange, sort, pageSize, activeSection]);
 
     const loadPage = useCallback(async (nextPage) => {
         if (inFlightRef.current || !hasMore) return;
@@ -149,6 +166,7 @@ export default function ContactsPage() {
                 page: nextPage,
                 size: pageSize,
                 sort,
+                section: activeSection,
                 ...buildServerQuery({ search, dateRange })
             });
             const pageData = normalizeContactPage(response);
@@ -163,7 +181,7 @@ export default function ContactsPage() {
             setLoadingMore(false);
             inFlightRef.current = false;
         }
-    }, [hasMore, pageSize, search, dateRange, sort]);
+    }, [hasMore, pageSize, search, dateRange, sort, activeSection]);
 
     useEffect(() => {
         const node = sentinelRef.current;
@@ -195,19 +213,25 @@ export default function ContactsPage() {
         message.success(`Saved "${payload.name}"`);
     };
 
+    const openContact = (contact) => { setSelectedContact(contact); profileForm.setFieldsValue({ name: contact.name, phoneNumber: contact.phoneNumber, email: contact.email || "", notes: contact.notes || "", tags: (contact.tags || []).join(", "), optedOut: contact.optedOut }); };
+    const saveContactProfile = async (values) => { if (!selectedContact) return; try { setProfileSaving(true); const response = await updateContact(selectedContact.id, { ...values, tags: values.tags ? values.tags.split(",").map((tag) => tag.trim()).filter(Boolean) : [], optedOut: Boolean(values.optedOut) }); const updated = response.data?.data ?? response.data; setSelectedContact(updated); setContacts((items) => items.map((item) => item.id === updated.id ? updated : item)); message.success("Contact saved"); } catch (error) { message.error(error?.response?.data?.message || "Unable to save contact"); } finally { setProfileSaving(false); } };
+
     const showingLabel =
         contacts.length === totalElements || !totalElements
             ? `${totalElements || contacts.length} contact${totalElements === 1 ? "" : "s"}`
             : `${contacts.length} of ${totalElements} contacts`;
 
     return (
-        <div className="contacts-page">
+        <div className="contacts-page contacts-crm-layout"><aside className="contacts-context-nav"><Card className="contacts-context-card" bordered={false}><Anchor className="contacts-context-anchor" affix={false} items={contactSections.map((item) => ({ key: item.key, href: `#contacts-${item.key}`, title: <span className={`contacts-anchor-title ${activeSection === item.key ? "is-active" : ""}`}>{item.icon}<span>{item.label}</span></span> }))} onClick={(event, item) => { event.preventDefault(); const key = item?.href?.replace("#contacts-", "") || "all"; setActiveSection(key); }} /></Card></aside><main className="contacts-module-content">
+            {!dataSections.includes(activeSection) && <CardPlaceholder section={contactSections.find((item) => item.key === activeSection)?.label} items={sectionData} />}
+            <div className={dataSections.includes(activeSection) ? "" : "contacts-all-hidden"}>
             <div className="page-header-row">
                 <div>
                     <Typography.Text className="page-eyebrow">Contacts</Typography.Text>
                     <Typography.Title level={1} className="page-title">
                         Your contact book
                     </Typography.Title>
+                    <Typography.Text type="secondary">Manage and organize your contacts and customer relationships.</Typography.Text>
                 </div>
                 <MarqButton variant="contained" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>
                     Add contact
@@ -228,6 +252,7 @@ export default function ContactsPage() {
             {error && <Alert type="error" showIcon message={error} style={{ marginBottom: 16 }} />}
 
             <div className="contacts-list-region">
+                {selectedContactKeys.length > 0 && <div className="contacts-bulk-toolbar"><Typography.Text strong>{selectedContactKeys.length} contacts selected</Typography.Text><Space><MarqButton variant="outlined" icon={<TagsOutlined />}>Add tag</MarqButton><MarqButton variant="outlined" icon={<DeleteOutlined />}>Delete</MarqButton></Space></div>}
                 <ContactList
                     contacts={filteredContacts}
                     loading={loading}
@@ -235,6 +260,9 @@ export default function ContactsPage() {
                     hasMore={hasMore}
                     loadingMore={loadingMore}
                     sentinelRef={sentinelRef}
+                    onOpen={openContact}
+                    selectedRowKeys={selectedContactKeys}
+                    onSelectionChange={setSelectedContactKeys}
                 />
             </div>
 
@@ -242,12 +270,18 @@ export default function ContactsPage() {
                 <span>{showingLabel}</span>
                 {hasMore && !loading && <span>Scroll to load more</span>}
             </Space>
+            </div>
 
             <CreateContactModal
                 open={createOpen}
                 onClose={() => setCreateOpen(false)}
                 onCreate={handleCreate}
             />
-        </div>
+            <Drawer title="Customer profile" open={Boolean(selectedContact)} onClose={() => setSelectedContact(null)} width={420} extra={<MarqButton variant="contained" loading={profileSaving} onClick={() => profileForm.submit()}>Save</MarqButton>}>
+                {selectedContact && <Form form={profileForm} layout="vertical" onFinish={saveContactProfile}><Form.Item label="Name" name="name" rules={[{ required: true }]}><Input /></Form.Item><Form.Item label="Phone number" name="phoneNumber"><Input disabled /></Form.Item><Form.Item label="Email" name="email"><Input /></Form.Item><Form.Item label="Tags" name="tags" help="Separate tags with commas"><Input placeholder="lead, vip" /></Form.Item><Form.Item label="Notes" name="notes"><Input.TextArea rows={4} /></Form.Item><Form.Item label="Block contact" name="optedOut" valuePropName="checked"><Switch /></Form.Item><Descriptions column={1} bordered size="small"><Descriptions.Item label="Created">{parseTimestamp(selectedContact.createdAt)?.toLocaleDateString() || "-"}</Descriptions.Item></Descriptions></Form>}
+            </Drawer>
+        </main></div>
     );
 }
+
+function CardPlaceholder({ section = "Contacts", items = [] }) { return <div className="contacts-placeholder"><Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={<><Typography.Text strong>{section}</Typography.Text><br /><Typography.Text type="secondary">{items.length ? items.join(" · ") : `This CRM workspace is ready for your ${section.toLowerCase()} workflow.`}</Typography.Text></>}><MarqButton variant="contained" icon={<PlusOutlined />}>Add contact</MarqButton></Empty></div>; }

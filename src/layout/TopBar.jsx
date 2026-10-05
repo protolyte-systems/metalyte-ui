@@ -64,6 +64,13 @@ export default function TopBar({ onNewMessage }) {
 
   const userMenuItems = [
     {
+      key: 'current-organization',
+      label: organization?.name || 'Current organization',
+      icon: <CheckCircleOutlined />,
+      disabled: true,
+    },
+    { type: 'divider' },
+    {
       key: 'profile',
       label: 'Profile',
       icon: <UserOutlined />,
@@ -77,6 +84,11 @@ export default function TopBar({ onNewMessage }) {
       key: 'organization',
       label: 'Organization Settings',
       icon: <TeamOutlined />,
+    },
+    {
+      key: 'create-organization',
+      label: 'Create organization',
+      icon: <PlusOutlined />,
     },
     { type: 'divider' },
     {
@@ -111,6 +123,7 @@ export default function TopBar({ onNewMessage }) {
 
   return (
     <Header
+      className="app-topbar"
       style={{
         height: tokens.header.height,
         padding: `0 ${tokens.spacing.lg}`,
@@ -130,11 +143,12 @@ export default function TopBar({ onNewMessage }) {
         <div style={{ position: 'relative', width: '100%', maxWidth: 420 }}>
           <form onSubmit={handleSearch}>
             <Input
+              className="topbar-search"
               placeholder="Search conversations..."
               value={searchValue}
               onChange={(e) => setSearchValue(e.target.value)}
               prefix={<SearchOutlined style={{ color: tokens.colors.textMuted }} />}
-              size="large"
+              size="middle"
               style={{
                 background: tokens.colors.bgSecondary,
                 border: `1px solid ${tokens.colors.border}`,
@@ -168,7 +182,8 @@ export default function TopBar({ onNewMessage }) {
           <Tooltip title="Filters">
             <Button
               type="default"
-              size="large"
+              size="middle"
+              className="topbar-filter-button"
               icon={
                 activeFilter !== 'all' ? (
                   <Badge count={1} style={{ background: tokens.colors.danger }}>
@@ -183,7 +198,6 @@ export default function TopBar({ onNewMessage }) {
                 border: `1px solid ${tokens.colors.border}`,
                 color: tokens.colors.textPrimary,
                 borderRadius: 12,
-                height: 48,
                 '&:hover': {
                   borderColor: tokens.colors.primary,
                   color: tokens.colors.primary,
@@ -195,31 +209,7 @@ export default function TopBar({ onNewMessage }) {
       </Space>
 
       {/* Right Side: Quick Actions, Notifications, Organization, User */}
-      <Space style={{ alignItems: 'center', gap: tokens.spacing.sm }}>
-        {/* Quick Actions: New Message */}
-        <Tooltip title="New Message">
-          <Button
-            type="primary"
-            size="large"
-            icon={<PlusOutlined />}
-            onClick={onNewMessage}
-            style={{
-              background: tokens.colors.primary,
-              borderColor: tokens.colors.primary,
-              borderRadius: 12,
-              height: 48,
-              fontWeight: 600,
-              fontSize: 15,
-              '&:hover': {
-                background: tokens.colors.primaryHover,
-                borderColor: tokens.colors.primaryHover,
-              },
-            }}
-          >
-            New Message
-          </Button>
-        </Tooltip>
-
+      <Space className="topbar-actions" style={{ alignItems: 'center', gap: tokens.spacing.sm }}>
         {/* Notifications */}
         <Tooltip title="Notifications">
           <Dropdown
@@ -257,15 +247,14 @@ export default function TopBar({ onNewMessage }) {
             >
               <Button
                 type="default"
-                size="large"
+                size="middle"
+                className="topbar-icon-button topbar-notification-button"
                 icon={<BellOutlined />}
                 style={{
-                  background: tokens.colors.bgSecondary,
-                  border: `1px solid ${tokens.colors.border}`,
                   color: tokens.colors.textPrimary,
-                  borderRadius: 12,
-                  height: 48,
-                  width: 48,
+                  border: 'none',
+                  background: 'transparent',
+                  width: 40,
                   '&:hover': {
                     borderColor: tokens.colors.primary,
                     color: tokens.colors.primary,
@@ -276,62 +265,24 @@ export default function TopBar({ onNewMessage }) {
           </Dropdown>
         </Tooltip>
 
-        {/* Organization Switcher */}
-        <Tooltip title="Switch Organization">
-          <Dropdown
-            menu={{
-              items: [
-                {
-                  key: 'current',
-                  label: organization?.name || 'Metalyte Inc.',
-                  icon: <CheckCircleOutlined />,
-                  disabled: true,
-                },
-                { type: 'divider' },
-                {
-                  key: 'create',
-                  label: 'Create New Organization',
-                  icon: <PlusOutlined />,
-                },
-                {
-                  key: 'settings',
-                  label: 'Organization Settings',
-                  icon: <SettingOutlined />,
-                },
-              ],
-            }}
-            trigger={['click']}
-          >
-            <Button
-              type="default"
-              size="large"
-              icon={<TeamOutlined />}
-              style={{
-                background: tokens.colors.bgSecondary,
-                border: `1px solid ${tokens.colors.border}`,
-                color: tokens.colors.textPrimary,
-                borderRadius: 12,
-                height: 48,
-                width: 48,
-                '&:hover': {
-                  borderColor: tokens.colors.primary,
-                  color: tokens.colors.primary,
-                },
-              }}
-            />
-          </Dropdown>
-        </Tooltip>
-
         {/* User Avatar Dropdown */}
         <Dropdown
           menu={{
             items: userMenuItems,
+            onClick: ({ key }) => {
+              if (key === 'logout') return;
+              if (key === 'create-organization') navigate('/settings?tab=organization');
+              else if (key === 'organization') navigate('/settings?tab=organization');
+              else if (key === 'profile') navigate('/settings?tab=profile');
+              else if (key === 'preferences') navigate('/settings?tab=appearance');
+            },
           }}
           trigger={['click']}
         >
           <Space style={{ alignItems: 'center', gap: 8 }}>
             <Avatar
               size={40}
+              className="topbar-avatar"
               style={{ background: tokens.colors.primary, cursor: 'pointer' }}
             >
               {(user?.fullName || user?.name || user?.email || 'N').slice(0, 1).toUpperCase()}

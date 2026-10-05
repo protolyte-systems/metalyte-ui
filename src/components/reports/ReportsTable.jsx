@@ -44,6 +44,17 @@ function StatusTag({ value }) {
     return <Tag color={statusColor[value] || "default"}>{(value || "-").toLowerCase()}</Tag>;
 }
 
+function MobileReportCard({ message, onClick }) {
+    return <Card size="small" className="mobile-report-card" onClick={onClick}>
+        <Space direction="vertical" size={6} style={{ width: "100%" }}>
+            <Space style={{ width: "100%", justifyContent: "space-between" }}><Typography.Text strong>{formatPhoneNumber(message.phoneNumber || message.toPhoneNumber) || "Unknown contact"}</Typography.Text><StatusTag value={message.currentStatus} /></Space>
+            <Typography.Text type="secondary">{message.templateName || message.messageType || "Message"}</Typography.Text>
+            <Space wrap size={[12, 4]}><Typography.Text type="secondary">Sent: {formatDateTimeIST(message.sentAt) || "-"}</Typography.Text><Typography.Text type="secondary">Read: {formatDateTimeIST(message.readAt) || "-"}</Typography.Text></Space>
+            {message.failureReason ? <Typography.Text type="danger" ellipsis>{message.failureReason}</Typography.Text> : null}
+        </Space>
+    </Card>;
+}
+
 function makeColumns() {
     return [
         { title: "WhatsApp Message ID", dataIndex: "whatsappMessageId", key: "whatsappMessageId", width: 220, render: (value) => <CopyableCell value={value} /> },
@@ -120,7 +131,7 @@ export default function ReportsTable({
         >
             {error ? <Alert type="error" showIcon message={error} action={onRefresh ? <Button onClick={onRefresh}>Retry</Button> : null} style={{ marginBottom: 16 }} /> : null}
 
-            <Table
+            <div className="desktop-report-table"><Table
                 rowKey={(row) => row.id ?? row.whatsappMessageId}
                 columns={columns.map((column) => ({
                     ...column,
@@ -146,7 +157,10 @@ export default function ReportsTable({
                         onSortModelChange([]);
                     }
                 }}
-            />
+            /></div>
+            <div className="mobile-report-list">
+                {messages.length ? messages.map((message) => <MobileReportCard key={message.id ?? message.whatsappMessageId} message={message} onClick={() => onRowClick?.({ row: message })} />) : <Empty description="No messages match your filters" />}
+            </div>
 
             <div className="reports-pagination-row">
                 <Space>

@@ -2,11 +2,11 @@ import { useMemo, useState } from 'react';
 import {
   Layout,
   Menu,
-  Avatar,
+  Drawer,
+  Grid,
   Tooltip,
   Typography,
   Divider,
-  Tag,
 } from 'antd';
 import {
   MenuFoldOutlined,
@@ -15,7 +15,11 @@ import {
   BarChartOutlined,
   UserOutlined,
   PayCircleOutlined,
+  SendOutlined,
   LogoutOutlined,
+  MenuOutlined,
+  SettingOutlined,
+  FileTextOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -30,13 +34,19 @@ const navItems = [
   { key: '/reports', label: 'Reports', icon: <BarChartOutlined /> },
   { key: '/contacts', label: 'Contacts', icon: <UserOutlined /> },
   { key: '/billing', label: 'Billing & Subscription', icon: <PayCircleOutlined /> },
+  { key: '/campaigns', label: 'Campaigns', icon: <SendOutlined /> },
+  { key: '/templates', label: 'Templates', icon: <FileTextOutlined /> },
+  { key: '/settings', label: 'Settings', icon: <SettingOutlined /> },
 ];
 
 export default function SideNav() {
-  const { logout, user, organization } = useAuth();
+  const { logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const screens = Grid.useBreakpoint();
+  const mobile = !screens.lg;
 
   const handleLogout = () => {
     logout();
@@ -52,12 +62,29 @@ export default function SideNav() {
     return '/';
   }, [location.pathname]);
 
-  const userInitial = (user?.fullName || user?.name || user?.email || 'N')
-    .slice(0, 1)
-    .toUpperCase();
+  const menu = <Menu
+    mode="inline"
+    selectedKeys={[selectedKey]}
+    onClick={({ key }) => { navigate(key); setMobileOpen(false); }}
+    theme="light"
+    inlineCollapsed={!mobile && collapsed}
+    style={{ borderRight: 'none', background: 'transparent' }}
+    items={navItems.map((item) => ({ key: item.key, icon: item.icon, label: item.label }))}
+  />;
+
+  if (mobile) return <>
+    <button type="button" className="mobile-nav-trigger" aria-label="Open navigation" onClick={() => setMobileOpen(true)}><MenuOutlined /></button>
+    <Drawer title="Metalyte" placement="left" open={mobileOpen} onClose={() => setMobileOpen(false)} width="min(86vw, 320px)" styles={{ body: { padding: 8 } }}>
+      <div className="mobile-nav-brand"><BrandLogo style={{ width: 190, maxWidth: '100%' }} /></div>
+      {menu}
+      <Divider />
+      <button type="button" className="app-sider-logout" onClick={handleLogout}><LogoutOutlined /><span>Logout</span></button>
+    </Drawer>
+  </>;
 
   return (
     <Sider
+      className="app-sider"
       width={tokens.sidebar.width}
       collapsedWidth={tokens.sidebar.widthCollapsed}
       collapsible
@@ -94,8 +121,8 @@ export default function SideNav() {
             </Tooltip>
           </div>
 
-          {!collapsed && (
-            <Typography.Text className="app-brand-subtitle">
+            {!collapsed && (
+              <Typography.Text className="app-brand-subtitle">
               Business Communication
             </Typography.Text>
           )}
@@ -104,19 +131,7 @@ export default function SideNav() {
         <Divider style={{ borderColor: tokens.colors.border, margin: 0 }} />
 
         <div style={{ padding: collapsed ? '8px 4px' : '8px 16px', marginTop: 8, flex: 1 }}>
-          <Menu
-            mode="inline"
-            selectedKeys={[selectedKey]}
-            onClick={({ key }) => navigate(key)}
-            theme="light"
-            inlineCollapsed={collapsed}
-            style={{ borderRight: 'none', background: 'transparent' }}
-            items={navItems.map((item) => ({
-              key: item.key,
-              icon: item.icon,
-              label: item.label,
-            }))}
-          />
+          {menu}
         </div>
 
         <div className="app-sider-footer" style={{ padding: collapsed ? 12 : 16 }}>
@@ -132,24 +147,6 @@ export default function SideNav() {
             </button>
           </Tooltip>
 
-          <div className={collapsed ? 'app-user-card centered' : 'app-user-card'}>
-            <Avatar size={40} style={{ background: tokens.colors.primary }}>
-              {userInitial}
-            </Avatar>
-            {!collapsed && (
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <div className="app-user-name">
-                  {user?.fullName || user?.name || user?.email || 'Name'}
-                </div>
-                <div className="app-user-org">
-                  {organization?.name || 'Organization'}
-                </div>
-                <Tag color="processing" style={{ marginTop: 4, fontSize: 11, lineHeight: '16px' }}>
-                  {user?.role || 'Member'}
-                </Tag>
-              </div>
-            )}
-          </div>
         </div>
       </div>
     </Sider>

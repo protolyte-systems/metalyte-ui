@@ -7,7 +7,8 @@ function buildListParams({
     size = 50,
     sort = "createdAt,desc",
     search = "",
-    createdAfter = null
+    createdAfter = null,
+    section = ""
 } = {}) {
     const params = new URLSearchParams();
     params.set("page", String(page));
@@ -19,6 +20,7 @@ function buildListParams({
     }
     if (search) params.set("search", search.trim());
     if (createdAfter) params.set("createdAfter", createdAfter);
+    if (section) params.set("section", section);
     return params;
 }
 
@@ -81,4 +83,12 @@ export function updateContact(id, payload) {
 
 export function deleteContact(id) {
     return axiosClient.delete(`/contacts/${id}`);
+}
+
+export function getContactTags() {
+    return axiosClient.get("/contacts/tags");
+}
+
+export function getContactSegments() {
+    return axiosClient.get("/contacts/segments");
 }

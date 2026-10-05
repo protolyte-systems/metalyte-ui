@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Input, Select, Space } from "antd";
 
 import ChatBody from "../components/chat/ChatBody";
 import ChatHeader from "../components/chat/ChatHeader";
@@ -9,6 +10,7 @@ import { useLayoutActions } from "../layout/useLayoutActions";
 
 import { getMessages, sendTextMessage } from "../api/conversationApi";
 import sseClient, { useSseEvent } from "../services/sseService";
+import { updateInboxConversation } from "../api/inboxApi";
 
 function messageBelongsToConversation(message, conversation) {
     if (!conversation?.phoneNumber) return false;
@@ -33,6 +35,13 @@ export default function InboxPage() {
     const [messages, setMessages] = useState([]);
     const [messagesLoading, setMessagesLoading] = useState(false);
     const [composeOpen, setComposeOpen] = useState(false);
+    const [conversationUpdating, setConversationUpdating] = useState(false);
+
+    const updateConversation = async (payload) => {
+        if (!selectedConversation?.id) return;
+        try { setConversationUpdating(true); const response = await updateInboxConversation(selectedConversation.id, payload); setSelectedConversation(response.data?.data ?? response.data); }
+        finally { setConversationUpdating(false); }
+    };
 
     useEffect(() => {
         registerNewMessageHandler(() => setComposeOpen(true));
@@ -133,10 +142,12 @@ export default function InboxPage() {
                 <ConversationPanel
                     selectedConversation={selectedConversation}
                     setSelectedConversation={setSelectedConversation}
+                    onNewMessage={() => setComposeOpen(true)}
                 />
 
                 <section className="inbox-chat-panel">
                     <ChatHeader conversation={selectedConversation} />
+                    {selectedConversation?.id ? <div style={{ padding: "8px 20px", borderBottom: "1px solid var(--border-color, #eee)" }}><Space><Select size="small" value={selectedConversation.status || "OPEN"} loading={conversationUpdating} onChange={(status) => updateConversation({ status, assignedUserId: selectedConversation.assignedUserId, internalNote: selectedConversation.internalNote || null })} options={["OPEN", "PENDING", "RESOLVED"].map((value) => ({ value, label: value }))} /><Input size="small" placeholder="Internal note" defaultValue={selectedConversation.internalNote || ""} onPressEnter={(event) => updateConversation({ status: selectedConversation.status || "OPEN", assignedUserId: selectedConversation.assignedUserId, internalNote: event.target.value })} style={{ width: 240 }} /></Space></div> : null}
                     <ChatBody
                         conversation={selectedConversation}
                         messages={messages}

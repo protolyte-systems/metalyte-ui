@@ -1,4 +1,4 @@
-import { Button, Descriptions, Divider, Drawer, Space, Tag, Tooltip, Typography } from "antd";
+import { Button, Descriptions, Divider, Drawer, Grid, Space, Tag, Tooltip, Typography } from "antd";
 import { CheckOutlined, CloseOutlined, CopyOutlined, LeftOutlined, RightOutlined } from "@ant-design/icons";
 import { useEffect, useState } from "react";
 
@@ -59,7 +59,9 @@ function DetailField(label, value, monospace = false) {
 }
 
 export default function MessageDetailsDrawer({ message, messages = [], onClose, onNavigate }) {
+    const screens = Grid.useBreakpoint();
     if (!message) return null;
+    const drawerWidth = screens.md ? 580 : "100vw";
 
     const timelineHistory = message.statusHistory || [];
     const currentIndex = messages.findIndex((m) => (m.id ?? m.whatsappMessageId) === (message.id ?? message.whatsappMessageId));
@@ -89,7 +91,12 @@ export default function MessageDetailsDrawer({ message, messages = [], onClose, 
         <Drawer
             open={Boolean(message)}
             onClose={onClose}
-            width={580}
+            width={drawerWidth}
+            placement="right"
+            styles={{
+                body: { padding: screens.md ? 24 : 16, overflowX: "hidden" },
+                header: { padding: screens.md ? "16px 24px" : "14px 16px" }
+            }}
             title={
                 <div>
                     <Space wrap>

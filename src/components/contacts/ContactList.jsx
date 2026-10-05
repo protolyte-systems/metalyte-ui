@@ -1,5 +1,5 @@
-import { Button, Empty, Space, Spin, Table, Tooltip, Typography } from "antd";
-import { MessageOutlined, PlusOutlined } from "@ant-design/icons";
+import { Button, Card, Dropdown, Empty, Space, Spin, Table, Tag, Tooltip, Typography } from "antd";
+import { DeleteOutlined, EditOutlined, MessageOutlined, MoreOutlined, PlusOutlined, TagsOutlined, UserOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 
 import MarqAvatar from "../common/MarqAvatar";
@@ -25,7 +25,7 @@ function ContactCell({ contact }) {
     const notes = contact.notes || "";
     return (
         <Space size={14} className="contacts-name-cell">
-            <MarqAvatar size={44}>{getInitials(name)}</MarqAvatar>
+            <MarqAvatar size={32}>{getInitials(name)}</MarqAvatar>
             <div className="contacts-name-copy">
                 <Typography.Text strong className="contacts-name-text">
                     {name}
@@ -40,6 +40,13 @@ function ContactCell({ contact }) {
     );
 }
 
+function MobileContactCard({ contact, onOpen }) {
+    const name = getContactName(contact);
+    return <Card size="small" className="mobile-contact-card" onClick={() => onOpen?.(contact)}>
+        <Space style={{ width: "100%" }} align="start"><MarqAvatar size={42}>{getInitials(name)}</MarqAvatar><div style={{ minWidth: 0, flex: 1 }}><Typography.Text strong>{name}</Typography.Text><Typography.Text type="secondary" style={{ display: "block" }}>{formatPhoneNumber(contact.phoneNumber) || "-"}</Typography.Text>{contact.email ? <Typography.Text type="secondary" ellipsis style={{ display: "block" }}>{contact.email}</Typography.Text> : null}</div><Button type="text" shape="circle" icon={<MessageOutlined />} onClick={(event) => { event.stopPropagation(); navigate("/", { state: { openPhoneNumber: contact.phoneNumber } }); }} /></Space>
+    </Card>;
+}
+
 export default function ContactList({
     contacts,
     loading,
@@ -47,7 +54,9 @@ export default function ContactList({
     onCreateClick,
     hasMore = false,
     loadingMore = false,
-    sentinelRef
+    sentinelRef,
+    selectedRowKeys = [],
+    onSelectionChange
 }) {
     const navigate = useNavigate();
 
@@ -74,6 +83,14 @@ export default function ContactList({
             render: (email) => email || <Typography.Text type="secondary">No email</Typography.Text>
         },
         {
+            title: "Tags",
+            key: "tags",
+            width: 180,
+            render: (_, contact) => contact.tags?.length
+                ? <Space size={[4, 4]} wrap>{contact.tags.map((tag) => <Tag key={tag} color="blue">{tag}</Tag>)}</Space>
+                : <Typography.Text type="secondary">-</Typography.Text>
+        },
+        {
             title: "Updated",
             key: "updatedAt",
             width: 190,
@@ -90,19 +107,18 @@ export default function ContactList({
             key: "action",
             width: 72,
             align: "right",
-            render: (_, contact) => (
-                <Tooltip title="Start conversation">
-                    <Button
-                        type="text"
-                        shape="circle"
-                        icon={<MessageOutlined />}
-                        onClick={(event) => {
-                            event.stopPropagation();
-                            navigate("/", { state: { openPhoneNumber: contact.phoneNumber } });
-                        }}
-                    />
-                </Tooltip>
-            )
+                render: (_, contact) => (
+                    <Dropdown menu={{ items: [
+                        { key: "view", label: "View contact", icon: <UserOutlined /> },
+                        { key: "message", label: "Send message", icon: <MessageOutlined /> },
+                        { key: "edit", label: "Edit contact", icon: <EditOutlined /> },
+                        { key: "tag", label: "Add tag", icon: <TagsOutlined /> },
+                        { type: "divider" },
+                        { key: "delete", label: "Delete contact", icon: <DeleteOutlined />, danger: true }
+                    ], onClick: ({ key }) => { if (key === "message") navigate("/", { state: { openPhoneNumber: contact.phoneNumber } }); else if (key === "view") onOpen?.(contact); }}} trigger={["click"]}>
+                        <Button type="text" shape="circle" icon={<MoreOutlined />} onClick={(event) => event.stopPropagation()} />
+                    </Dropdown>
+                )
         }
     ];
 
@@ -129,6 +145,8 @@ export default function ContactList({
 
     return (
         <div className="contacts-table-shell">
+            <div className="mobile-contact-list">{contacts.map((contact) => <MobileContactCard key={contact.id || contact.phoneNumber} contact={contact} onOpen={onOpen} />)}</div>
+            <div className="desktop-contact-table">
             <Table
                 rowKey={(contact) => contact.id || contact.contactId || contact.phoneNumber}
                 columns={columns}
@@ -141,7 +159,9 @@ export default function ContactList({
                     onClick: () => onOpen?.(contact)
                 })}
                 className="contacts-table"
+                rowSelection={{ selectedRowKeys, onChange: onSelectionChange, columnWidth: 38 }}
             />
+            </div>
             <div ref={sentinelRef} className="contacts-load-row">
                 {hasMore ? (
                     <Space size={10}>

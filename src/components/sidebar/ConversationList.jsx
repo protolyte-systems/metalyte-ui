@@ -4,8 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 
 import ConversationItem from "./ConversationItem";
 import { getConversations } from "../../api/conversationApi";
+import { listInboxConversations } from "../../api/inboxApi";
 
-function ConversationList({ selectedConversation, setSelectedConversation }) {
+function ConversationList({ selectedConversation, setSelectedConversation, status = "" }) {
     const [conversations, setConversations] = useState([]);
     const [loading, setLoading] = useState(true);
     const [query, setQuery] = useState("");
@@ -13,14 +14,22 @@ function ConversationList({ selectedConversation, setSelectedConversation }) {
     useEffect(() => {
         let active = true;
 
-        getConversations()
+        const request = status === "" || status === "OPEN"
+            ? getConversations()
+            : listInboxConversations({ page: 0, size: 100, status });
+        request
             .then((response) => {
-                const data = response.data.data ?? response.data ?? [];
+                const body = response.data.data ?? response.data ?? [];
+                const data = Array.isArray(body) ? body : (body.content ?? body);
                 if (active) setConversations(Array.isArray(data) ? data : []);
             })
             .catch((error) => {
                 console.error(error);
-                if (active) setConversations([]);
+                return (status === "" || status === "OPEN" ? listInboxConversations({ page: 0, size: 100, ...(status ? { status } : {}) }) : getConversations()).then((response) => {
+                    const data = response.data?.data ?? response.data ?? [];
+                    const items = Array.isArray(data) ? data : (data.content ?? data);
+                    if (active) setConversations(Array.isArray(items) ? items : []);
+                }).catch(() => { if (active) setConversations([]); });
             })
             .finally(() => {
                 if (active) setLoading(false);
@@ -29,7 +38,7 @@ function ConversationList({ selectedConversation, setSelectedConversation }) {
         return () => {
             active = false;
         };
-    }, []);
+    }, [status]);
 
     const filteredConversations = useMemo(() => {
         const value = query.trim().toLowerCase();

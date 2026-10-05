@@ -11,7 +11,8 @@ export default function LoginForm({
     loading,
     onEmailChange,
     onPasswordChange,
-    onSubmit
+    onSubmit,
+    onForgotPassword
 }) {
     return (
         <form
@@ -36,7 +37,7 @@ export default function LoginForm({
 
             <div className="auth-password-row">
                 <Typography.Text className="auth-field-label">PASSWORD</Typography.Text>
-                <button type="button" className="auth-link-button auth-forgot-link">
+                <button type="button" className="auth-link-button auth-forgot-link" onClick={onForgotPassword}>
                     Forgot Password?
                 </button>
             </div>

@@ -25,11 +25,13 @@ import LogoutIcon
 import {
     useAuth
 } from "../../context/useAuth";
+import { useNavigate } from "react-router-dom";
 
 function SideMenu() {
 
     const { logout } =
         useAuth();
+    const navigate = useNavigate();
 
     return (
 
@@ -70,7 +72,7 @@ function SideMenu() {
             </Tooltip>
 
             <Tooltip title="Settings">
-                <IconButton>
+                <IconButton onClick={() => navigate("/settings")}>
                     <SettingsIcon sx={{ color: "white" }} />
                 </IconButton>
             </Tooltip>
